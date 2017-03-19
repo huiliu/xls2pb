@@ -1,1 +1,3 @@
 *.pyc
+pb/*pb2.py
+data/*.pb
