@@ -1,15 +1,21 @@
-# -*- encoding: utf-8 -*-
+# -*- coding: utf-8 -*-
+
+#import sys
+#reload(sys)
+#sys.setdefaultencoding("utf-8")
+
 from openpyxl import load_workbook
-import item_pb2
 import datetime
 import time
 import types
+import os
+import importlib
 
-def main():
-    itemTable = Excel2ProtoBuf()
-    itemTable.parseExcel("item.xlsx")
-    itemTable.saveToFile("item.pb")
-    itemTable.parseFromFile("item.pb")
+# google protobuf 生成文件路径
+PYTHON_PROTO_PATH = "pb"
+
+# excel文件后缀
+EXCEL_FILE_SUFFIX = ".xlsx"
 
 class Excel2ProtoBuf:
     """用于解析，保存Excel中数据
@@ -17,14 +23,17 @@ class Excel2ProtoBuf:
     excelFile = None
     head = []
     filedProcessors = {}
-    itemTable = item_pb2.Items()
+    itemTable = None
 
     def __init__(self):
         pass
 
-    def parseExcel(self, excelFile):
+    def parseExcel(self, excelFile, module):
+        """
+        """
         self.excelFile = excelFile
-        wb = load_workbook(filename = excelFile, read_only=True)
+        self.itemTable = module()
+        wb = load_workbook(filename = self.excelFile, read_only=True)
         ws = wb.get_active_sheet()
 
         isHead = True
@@ -41,7 +50,7 @@ class Excel2ProtoBuf:
                     data = self._processCell(fieldName, cell.value)
                     setattr(cellItem, fieldName, data)
                 except Exception as e:
-                    print(u"字段%s表中值为：%s 原因：%s" % (fieldName, cell.value, e.message))
+                    print(u"字段%s表中值为：%s 原因：%s" % (fieldName, cell.value, e.message()))
 
     def _processCell(self, fieldName, data):
         """process cell data"""
@@ -68,8 +77,11 @@ class Excel2ProtoBuf:
         self.filedProcessors[specialField] = processor
 
     def saveToFile(self, saveFile):
+        """将数据保存到文件
+        """
         with open(saveFile, "wb") as io:
             io.write(self.itemTable.SerializeToString())
+        print("%s被转换保存为%s!" % (self.excelFile, saveFile))
 
     def parseFromFile(self, fileName):
         """parse data construct protobuf struct"""
@@ -79,6 +91,33 @@ class Excel2ProtoBuf:
 
         for it in self.itemTable.item:
             print(it)
+
+def exportAll(excelPath, savePath):
+    """将指定目录下Excel文件转换为protobuf二进制数据"""
+    
+    protoModule = None
+    itemTable = Excel2ProtoBuf()
+
+    for excelFile in os.listdir(excelPath):
+        if not excelFile.endswith(EXCEL_FILE_SUFFIX):
+            continue
+
+        print(excelFile)
+        try:
+            protoModuleName = excelFile.rstrip(EXCEL_FILE_SUFFIX) + "_pb2"
+            protoModule = importlib.import_module("pb." + protoModuleName)
+            protoTable = excelFile.rstrip(EXCEL_FILE_SUFFIX) + "Table"
+            protoModule = getattr(protoModule, protoTable)
+        except Exception as e:
+            print("导入google protobuf模块失败！name: [%s]\n原因:%s\n" %
+                (excelFile, e.message()))
+            continue
+
+        itemTable.parseExcel(excelPath + "/" + excelFile, protoModule)
+        itemTable.saveToFile(savePath + "/" + excelFile + ".pb")
+
+def main():
+    exportAll("excel", "data")
 
 if __name__ == '__main__':
     main()

@@ -65,6 +65,8 @@ python
         elif isinstance(ob, types.FunctionType)
             pass
 
+    参见\ `此文 <http://stackoverflow.com/questions/624926/how-to-detect-whether-a-python-variable-is-a-function>`_
+
 *   datetime.datetime类型怎么转换为unix时间
 
              datetime.datetime.timetuple()                    time.mktime(...)返回的为浮点
